@@ -22,7 +22,7 @@
       "prettier --write",
       "git add"
     ],
-    "*.{ts}": [
+    "*.ts": [
       "prettier --write",
       "tslint --fix",
       "git add"
@@ -31,6 +31,10 @@
   "scripts": {
     "start": "parcel index.html",
     "build": "parcel build index.html",
-    "lint": "tslint ./src/**/*.ts"
+    "lint": "tslint --fix ./src/**/*.ts",
+    "prettier": "prettier --write ./**/*.{js,json,css,md,ts}"
+  },
+  "dependencies": {
+    "emotion": "^10.0.6"
   }
 }
