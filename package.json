@@ -35,6 +35,7 @@
     "prettier": "prettier --write ./**/*.{js,json,css,md,ts}"
   },
   "dependencies": {
-    "emotion": "^10.0.6"
+    "emotion": "^10.0.6",
+    "rxjs": "^6.3.3"
   }
 }
