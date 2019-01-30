@@ -8,8 +8,8 @@ window.document.body.classList.add(css`
   color: gray;
 `);
 
-const width = 10;
-const height = 10;
+const width = 40;
+const height = 20;
 
 const life: Life = Array.from({ length: width }, () =>
   Array.from({ length: height }, () =>
@@ -18,7 +18,7 @@ const life: Life = Array.from({ length: width }, () =>
 );
 
 render({
-  life$: interval(1000, animationFrameScheduler).pipe(
+  life$: interval(0, animationFrameScheduler).pipe(
     scan<number, Life>(
       (prevLife, _, i) =>
         i === 0

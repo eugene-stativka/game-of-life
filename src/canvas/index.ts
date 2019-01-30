@@ -1,5 +1,4 @@
 import { Subscription } from "rxjs";
-import { take } from "rxjs/operators";
 import { CellStates } from "../types";
 import { IRenderProperties } from "./types";
 
@@ -23,8 +22,8 @@ export function render({ life$, target }: IRenderProperties): Subscription {
     subscription.unsubscribe();
   }
 
-  subscription = life$.pipe(take(3)).subscribe(life => {
-    ctx.strokeStyle = "orange";
+  subscription = life$.subscribe(life => {
+    ctx.strokeStyle = "#e2e2e2";
 
     for (let i = 0; i <= 500; i += 5) {
       ctx.moveTo(i, 0);
@@ -38,13 +37,10 @@ export function render({ life$, target }: IRenderProperties): Subscription {
 
     ctx.stroke();
 
-    ctx.fillStyle = "purple";
-
     life.forEach((line, x) => {
       line.forEach((item, y) => {
-        if (item === CellStates.Alive) {
-          ctx.fillRect(x * 5, y * 5, 5, 5);
-        }
+        ctx.fillStyle = item === CellStates.Alive ? "purple" : "white";
+        ctx.fillRect(x * 5, y * 5, 4, 4);
       });
     });
   });
