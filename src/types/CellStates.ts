@@ -1,4 +1,4 @@
 export const enum CellStates {
-  Alive,
   Dead,
+  Alive,
 }
