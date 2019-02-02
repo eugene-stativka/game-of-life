@@ -4,7 +4,10 @@ import { IRenderProperties } from "./types";
 
 let subscription: Subscription;
 
-export function render({ life$, target }: IRenderProperties): Subscription {
+export function render({
+  lifeState$,
+  target,
+}: IRenderProperties): Subscription {
   const canvas = document.createElement("canvas") as HTMLCanvasElement;
   canvas.setAttribute("width", "400px");
   canvas.setAttribute("height", "200px");
@@ -22,21 +25,9 @@ export function render({ life$, target }: IRenderProperties): Subscription {
     subscription.unsubscribe();
   }
 
-  subscription = life$.subscribe(life => {
-    ctx.strokeStyle = "#e2e2e2";
+  renderGrid(ctx);
 
-    for (let i = 0; i <= 500; i += 5) {
-      ctx.moveTo(i, 0);
-      ctx.lineTo(i, 495);
-    }
-
-    for (let i = 0; i <= 500; i += 5) {
-      ctx.moveTo(0, i);
-      ctx.lineTo(500, i);
-    }
-
-    ctx.stroke();
-
+  subscription = lifeState$.subscribe(life => {
     life.forEach((line, x) => {
       line.forEach((item, y) => {
         ctx.fillStyle = item === CellStates.Alive ? "purple" : "white";
@@ -46,4 +37,20 @@ export function render({ life$, target }: IRenderProperties): Subscription {
   });
 
   return subscription;
+}
+
+function renderGrid(ctx: CanvasRenderingContext2D): void {
+  ctx.strokeStyle = "#e2e2e2";
+
+  for (let i = 0; i <= 500; i += 5) {
+    ctx.moveTo(i, 0);
+    ctx.lineTo(i, 495);
+  }
+
+  for (let i = 0; i <= 500; i += 5) {
+    ctx.moveTo(0, i);
+    ctx.lineTo(500, i);
+  }
+
+  ctx.stroke();
 }
