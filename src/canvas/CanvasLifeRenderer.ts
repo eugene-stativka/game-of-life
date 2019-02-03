@@ -5,8 +5,6 @@ import { CellStates, LifeState } from "../types";
 import { ILifeRenderer } from "./types";
 
 export class CanvasLifeRenderer implements ILifeRenderer {
-  private subscription?: Subscription;
-
   public render({
     cellSize,
     lifeState$,
@@ -15,11 +13,7 @@ export class CanvasLifeRenderer implements ILifeRenderer {
     cellSize: number;
     lifeState$: Observable<LifeState>;
     target: HTMLElement;
-  }>): void {
-    if (this.subscription) {
-      this.subscription.unsubscribe();
-    }
-
+  }>): Subscription {
     let context: CanvasRenderingContext2D;
 
     const lifeStateShared$ = lifeState$.pipe(share());
@@ -37,7 +31,7 @@ export class CanvasLifeRenderer implements ILifeRenderer {
         renderGrid({ cellSize, context, height, width });
       });
 
-    this.subscription = lifeStateShared$.subscribe(life => {
+    return lifeStateShared$.subscribe(life => {
       context.fillStyle = "#09af00";
       life.forEach((line, x) => {
         line.forEach((item, y) => {

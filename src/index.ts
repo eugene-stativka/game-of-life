@@ -2,28 +2,20 @@ import { css } from "emotion";
 import { animationFrameScheduler, interval, Observable } from "rxjs";
 import { scan } from "rxjs/operators";
 import { CanvasLifeRenderer } from "./canvas";
+import { ILifeRenderer } from "./canvas/types";
+import { assertNever } from "./helpers/assertNever";
 import { CellStates, ICoordinates, LifeState } from "./types";
+import { RenderModes } from "./types/RenderModes";
 
 const CELL_SIZE = 10;
+const RENDER_MODE = RenderModes.Canvas;
 
 main();
 
 function main(): void {
-  window.document.body.classList.add(css`
-    display: flex;
-    min-height: 100vh;
-    margin: 0;
-    padding: 10px;
-    background-color: #222;
-  `);
-  const lifeRenderer = new CanvasLifeRenderer();
+  const lifeRenderer = getLifeRenderer({ renderMode: RENDER_MODE });
   const target = window.document.getElementById("root") || window.document.body;
-  target.classList.add(css`
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex: 1;
-  `);
+  applyStyles({ target });
   const { height, width } = target.getBoundingClientRect();
   const columnsCount = (width - (width % CELL_SIZE)) / CELL_SIZE;
   const rowsCount =
@@ -31,6 +23,19 @@ function main(): void {
   const initialState = getInitialLifeState({ columnsCount, rowsCount });
   const lifeState$ = getLifeState$({ initialState });
   lifeRenderer.render({ cellSize: CELL_SIZE, lifeState$, target });
+}
+
+function getLifeRenderer({
+  renderMode,
+}: {
+  renderMode: RenderModes;
+}): ILifeRenderer {
+  switch (renderMode) {
+    case RenderModes.Canvas:
+      return new CanvasLifeRenderer();
+    default:
+      return assertNever(renderMode);
+  }
 }
 
 function getLifeState$({
@@ -104,4 +109,22 @@ function getInitialLifeState({
       Math.random() > 0.75 ? CellStates.Alive : CellStates.Dead,
     ),
   );
+}
+
+function applyStyles({ target }: { target: HTMLElement }): void {
+  window.document.body.classList.add(css`
+    display: flex;
+    min-height: 100vh;
+    margin: 0;
+    padding-left: 10px;
+    padding-right: 10px;
+    background-color: #222;
+  `);
+
+  target.classList.add(css`
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+  `);
 }
