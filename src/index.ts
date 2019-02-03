@@ -1,28 +1,43 @@
 import { css } from "emotion";
 import { animationFrameScheduler, interval, Observable } from "rxjs";
 import { scan } from "rxjs/operators";
-import { render } from "./canvas";
+import { CanvasLifeRenderer } from "./canvas";
 import { CellStates, ICoordinates, LifeState } from "./types";
 
-window.document.body.classList.add(css`
-  color: gray;
-`);
+const CELL_SIZE = 10;
 
-const width = 40;
-const height = 20;
+main();
 
-const initialLifeState: LifeState = Array.from({ length: width }, () =>
-  Array.from({ length: height }, () =>
-    Math.random() > 0.75 ? CellStates.Alive : CellStates.Dead,
-  ),
-);
+function main(): void {
+  window.document.body.classList.add(css`
+    display: flex;
+    min-height: 100vh;
+    margin: 0;
+    padding: 10px;
+    background-color: #222;
+  `);
+  const lifeRenderer = new CanvasLifeRenderer();
+  const target = window.document.getElementById("root") || window.document.body;
+  target.classList.add(css`
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+  `);
+  const { height, width } = target.getBoundingClientRect();
+  const columnsCount = (width - (width % CELL_SIZE)) / CELL_SIZE;
+  const rowsCount =
+    (height - (height % CELL_SIZE) - CELL_SIZE * 10) / CELL_SIZE;
+  const initialState = getInitialLifeState({ columnsCount, rowsCount });
+  const lifeState$ = getLifeState$({ initialState });
+  lifeRenderer.render({ cellSize: CELL_SIZE, lifeState$, target });
+}
 
-render({
-  lifeState$: getLifeState$(),
-  target: window.document.getElementById("root") || window.document.body,
-});
-
-function getLifeState$(): Observable<LifeState> {
+function getLifeState$({
+  initialState,
+}: {
+  initialState: LifeState;
+}): Observable<LifeState> {
   return interval(0, animationFrameScheduler).pipe(
     scan<number, LifeState>(
       (prevLife, {}, i) =>
@@ -36,7 +51,7 @@ function getLifeState$(): Observable<LifeState> {
                 }),
               ),
             ),
-      initialLifeState,
+      initialState,
     ),
   );
 }
@@ -75,4 +90,18 @@ function getNextCellState({
     default:
       return CellStates.Dead;
   }
+}
+
+function getInitialLifeState({
+  columnsCount,
+  rowsCount,
+}: {
+  columnsCount: number;
+  rowsCount: number;
+}): LifeState {
+  return Array.from({ length: columnsCount }, () =>
+    Array.from({ length: rowsCount }, () =>
+      Math.random() > 0.75 ? CellStates.Alive : CellStates.Dead,
+    ),
+  );
 }

@@ -1,7 +1,12 @@
 import { Observable } from "rxjs";
 import { LifeState } from "../../types";
 
-export interface IRenderProperties {
-  readonly target: HTMLElement;
-  readonly lifeState$: Observable<LifeState>;
+export interface ILifeRenderer {
+  render(
+    props: Readonly<{
+      cellSize: number;
+      lifeState$: Observable<LifeState>;
+      target: HTMLElement;
+    }>,
+  ): void;
 }
