@@ -1,6 +1,9 @@
 import { css } from "emotion";
+import * as React from "react";
+import * as ReactDOM from "react-dom";
 import { animationFrameScheduler, interval, Observable } from "rxjs";
 import { scan } from "rxjs/operators";
+import { App } from "./App";
 import { CanvasLifeRenderer } from "./canvas";
 import { ILifeRenderer } from "./canvas/types";
 import { assertNever } from "./helpers/assertNever";
@@ -10,7 +13,7 @@ import { RenderModes } from "./types/RenderModes";
 const CELL_SIZE = 10;
 const RENDER_MODE = RenderModes.Canvas;
 
-main();
+main2();
 
 function main(): void {
   const lifeRenderer = getLifeRenderer({ renderMode: RENDER_MODE });
@@ -25,6 +28,11 @@ function main(): void {
   lifeRenderer.render({ cellSize: CELL_SIZE, lifeState$, target });
 }
 
+function main2(): void {
+  const target = window.document.getElementById("root") || window.document.body;
+  ReactDOM.render(<App />, target);
+}
+
 function getLifeRenderer({
   renderMode,
 }: {
@@ -32,6 +40,7 @@ function getLifeRenderer({
 }): ILifeRenderer {
   switch (renderMode) {
     case RenderModes.Canvas:
+    case RenderModes.Table: // TODO handle Table
       return new CanvasLifeRenderer();
     default:
       return assertNever(renderMode);
