@@ -32,6 +32,7 @@
   "scripts": {
     "start": "parcel index.html",
     "build": "parcel build index.html",
+    "now-build": "npm run build",
     "lint": "tslint --fix ./src/**/*.ts",
     "prettier": "prettier --write ./**/*.{js,json,css,md,ts}"
   },
