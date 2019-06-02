@@ -1,3 +1,3 @@
 export * from "./CellStates";
-export * from "./LifeState";
+export * from "./Life";
 export * from "./Coordinates";
