@@ -1,51 +1,57 @@
-import { Observable, Subscription } from "rxjs";
-import { first, map, pairwise, share } from "rxjs/operators";
-import { assertNever } from "../helpers/assertNever";
-import { CellStates, LifeState } from "../types";
-import { ILifeRenderer } from "./types";
+import { animationFrameScheduler, Observable } from "rxjs";
+import { first, map, observeOn, pairwise } from "rxjs/operators";
+import { CELL_SIZE } from "../../constants";
+import { assertNever } from "../../helpers";
+import { CellStates, Life } from "../../types";
+import { ILifeRenderer } from "../types";
 
 export class CanvasLifeRenderer implements ILifeRenderer {
+  private readonly unsubscribeFns = new Set<() => void>();
+
+  public dispose() {
+    this.unsubscribeFns.forEach(fn => fn());
+    this.unsubscribeFns.clear();
+  }
+
   public render({
-    cellSize,
-    lifeState$,
+    life$,
     target,
   }: Readonly<{
-    cellSize: number;
-    lifeState$: Observable<LifeState>;
+    life$: Observable<Life>;
     target: HTMLElement;
-  }>): Subscription {
+  }>) {
     let context: CanvasRenderingContext2D;
 
-    const lifeStateShared$ = lifeState$.pipe(share());
+    const lifeStateShared$ = life$.pipe(observeOn(animationFrameScheduler));
 
     lifeStateShared$
       .pipe(
         first(),
-        map(lifeState => ({
-          height: lifeState[0].length * cellSize,
-          width: lifeState.length * cellSize,
+        map(life => ({
+          height: life.state[0].length * CELL_SIZE,
+          width: life.state.length * CELL_SIZE,
         })),
       )
       .subscribe(({ height, width }) => {
         context = initCanvas({ height, target, width });
-        renderGrid({ cellSize, context, height, width });
+        renderGrid({ context, height, width });
       });
 
-    return lifeStateShared$
+    const subscription = lifeStateShared$
       .pipe(pairwise())
-      .subscribe(([prevState, nextState]) => {
+      .subscribe(([prevLife, nextLife]) => {
         context.fillStyle = "#09af00";
-        nextState.forEach((line, x) => {
+        nextLife.state.forEach((line, x) => {
           line.forEach((item, y) => {
-            if (prevState[x][y] === item) {
+            if (prevLife.state[x][y] === item) {
               return;
             }
 
             const args: Parameters<typeof context.fillRect> = [
-              x * cellSize + 0.5,
-              y * cellSize + 0.5,
-              cellSize - 1,
-              cellSize - 1,
+              x * CELL_SIZE + 0.5,
+              y * CELL_SIZE + 0.5,
+              CELL_SIZE - 1,
+              CELL_SIZE - 1,
             ];
 
             switch (item) {
@@ -62,28 +68,28 @@ export class CanvasLifeRenderer implements ILifeRenderer {
           });
         });
       });
+
+    this.unsubscribeFns.add(subscription.unsubscribe);
   }
 }
 
 function renderGrid({
-  cellSize,
   context,
   height,
   width,
 }: {
-  cellSize: number;
   context: CanvasRenderingContext2D;
   height: number;
   width: number;
 }): void {
   context.strokeStyle = "#3e3e3e";
 
-  for (let i = 0; i <= width; i += cellSize) {
+  for (let i = 0; i <= width; i += CELL_SIZE) {
     context.moveTo(i, 0);
     context.lineTo(i, height);
   }
 
-  for (let i = 0; i <= height; i += cellSize) {
+  for (let i = 0; i <= height; i += CELL_SIZE) {
     context.moveTo(0, i);
     context.lineTo(width, i);
   }

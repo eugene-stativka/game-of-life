@@ -1,0 +1,1 @@
+export { CanvasLifeRenderer } from "./CanvasLifeRenderer";
