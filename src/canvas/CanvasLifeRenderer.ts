@@ -1,5 +1,5 @@
 import { Observable, Subscription } from "rxjs";
-import { first, map, share } from "rxjs/operators";
+import { first, map, pairwise, share } from "rxjs/operators";
 import { assertNever } from "../helpers/assertNever";
 import { CellStates, LifeState } from "../types";
 import { ILifeRenderer } from "./types";
@@ -31,31 +31,37 @@ export class CanvasLifeRenderer implements ILifeRenderer {
         renderGrid({ cellSize, context, height, width });
       });
 
-    return lifeStateShared$.subscribe(life => {
-      context.fillStyle = "#09af00";
-      life.forEach((line, x) => {
-        line.forEach((item, y) => {
-          const args: Parameters<typeof context.fillRect> = [
-            x * cellSize + 0.5,
-            y * cellSize + 0.5,
-            cellSize - 1,
-            cellSize - 1,
-          ];
+    return lifeStateShared$
+      .pipe(pairwise())
+      .subscribe(([prevState, nextState]) => {
+        context.fillStyle = "#09af00";
+        nextState.forEach((line, x) => {
+          line.forEach((item, y) => {
+            if (prevState[x][y] === item) {
+              return;
+            }
 
-          switch (item) {
-            case CellStates.Alive:
-              context.fillRect(...args);
-              break;
-            case CellStates.Dead:
-              context.clearRect(...args);
-              break;
-            default:
-              assertNever(item);
-              break;
-          }
+            const args: Parameters<typeof context.fillRect> = [
+              x * cellSize + 0.5,
+              y * cellSize + 0.5,
+              cellSize - 1,
+              cellSize - 1,
+            ];
+
+            switch (item) {
+              case CellStates.Alive:
+                context.fillRect(...args);
+                break;
+              case CellStates.Dead:
+                context.clearRect(...args);
+                break;
+              default:
+                assertNever(item);
+                break;
+            }
+          });
         });
       });
-    });
   }
 }
 
