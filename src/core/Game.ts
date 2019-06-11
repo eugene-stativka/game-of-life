@@ -20,6 +20,20 @@ import {
 import { CellStates, ICoordinates, Life } from "../types";
 
 export class Game {
+  public static getRandomLifeState({
+    columnsCount,
+    rowsCount,
+  }: Readonly<{
+    columnsCount: number;
+    rowsCount: number;
+  }>): Life["state"] {
+    return Array.from({ length: columnsCount }, () =>
+      Array.from({ length: rowsCount }, () =>
+        Math.random() > 0.75 ? CellStates.Alive : CellStates.Dead,
+      ),
+    );
+  }
+
   private static getNextCellState({
     coordinates: { x, y },
     state,

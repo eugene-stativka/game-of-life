@@ -12,8 +12,8 @@ function main(): void {
     throw new Error("#root element should be defined");
   }
 
-  const mainController = new MainController({ rootEl });
-  mainController.render();
+  // tslint:disable-next-line:no-unused-expression
+  new MainController({ rootEl });
 }
 
 function applyStyles(): void {

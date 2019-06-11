@@ -1,53 +1,68 @@
-import { animationFrameScheduler, Observable } from "rxjs";
+import { animationFrameScheduler, fromEvent } from "rxjs";
 import { first, map, observeOn, pairwise } from "rxjs/operators";
-import { CELL_SIZE } from "../../constants";
+import {
+  CELL_SIZE,
+  SPEED_INTERVAL,
+  SPEED_RANGE_DEFAULT_VALUE,
+  SPEED_RANGE_MAX_VALUE,
+} from "../../constants";
+import { Game } from "../../core";
 import { assertNever } from "../../helpers";
-import { CellStates, Life } from "../../types";
-import { ILifeRenderer } from "../types";
+import { CellStates } from "../../types";
+import { LifeRenderer } from "../types";
 
-export class CanvasLifeRenderer implements ILifeRenderer {
-  private readonly unsubscribeFns = new Set<() => void>();
+export class CanvasLifeRenderer extends LifeRenderer {
+  private readonly controls = window.document.createElement("div");
+  private readonly gameArea = window.document.createElement("div");
+  private readonly randomButton = window.document.createElement("button");
+  private readonly startButton = window.document.createElement("button");
+  private readonly stopButton = window.document.createElement("button");
+  private readonly speedRange = window.document.createElement("input");
+  private readonly canvas = document.createElement("canvas");
+  private readonly context = this.canvas.getContext(
+    "2d",
+  ) as CanvasRenderingContext2D;
 
-  public dispose() {
-    this.unsubscribeFns.forEach(fn => fn());
-    this.unsubscribeFns.clear();
-  }
+  constructor(
+    props: Readonly<{
+      game: Game;
+      target: HTMLElement;
+      columnsCount: number;
+      rowsCount: number;
+    }>,
+  ) {
+    super(props);
 
-  public render({
-    life$,
-    target,
-  }: Readonly<{
-    life$: Observable<Life>;
-    target: HTMLElement;
-  }>) {
-    let context: CanvasRenderingContext2D;
+    const lifeStateShared$ = props.game.life$.pipe(
+      observeOn(animationFrameScheduler),
+    );
 
-    const lifeStateShared$ = life$.pipe(observeOn(animationFrameScheduler));
+    const init$ = lifeStateShared$.pipe(
+      first(),
+      map(life => ({
+        height: life.state[0].length * CELL_SIZE,
+        width: life.state.length * CELL_SIZE,
+      })),
+    );
 
-    lifeStateShared$
-      .pipe(
-        first(),
-        map(life => ({
-          height: life.state[0].length * CELL_SIZE,
-          width: life.state.length * CELL_SIZE,
-        })),
-      )
-      .subscribe(({ height, width }) => {
-        context = initCanvas({ height, target, width });
-        renderGrid({ context, height, width });
-      });
+    this.disposeBag.subscribe(init$, {
+      next: ({ height, width }) => {
+        this.initControls();
+        this.initCanvas({ height, target: props.target, width });
+        this.initGrid({ height, width });
+      },
+    });
 
-    const subscription = lifeStateShared$
-      .pipe(pairwise())
-      .subscribe(([prevLife, nextLife]) => {
-        context.fillStyle = "#09af00";
+    this.disposeBag.subscribe(lifeStateShared$.pipe(pairwise()), {
+      next: ([prevLife, nextLife]) => {
+        this.context.fillStyle = "#09af00";
         nextLife.state.forEach((line, x) => {
           line.forEach((item, y) => {
             if (prevLife.state[x][y] === item) {
               return;
             }
 
-            const args: Parameters<typeof context.fillRect> = [
+            const args: Parameters<CanvasRect["fillRect"]> = [
               x * CELL_SIZE + 0.5,
               y * CELL_SIZE + 0.5,
               CELL_SIZE - 1,
@@ -56,10 +71,10 @@ export class CanvasLifeRenderer implements ILifeRenderer {
 
             switch (item) {
               case CellStates.Alive:
-                context.fillRect(...args);
+                this.context.fillRect(...args);
                 break;
               case CellStates.Dead:
-                context.clearRect(...args);
+                this.context.clearRect(...args);
                 break;
               default:
                 assertNever(item);
@@ -67,72 +82,84 @@ export class CanvasLifeRenderer implements ILifeRenderer {
             }
           });
         });
-      });
-
-    this.unsubscribeFns.add(subscription.unsubscribe);
-  }
-}
-
-function renderGrid({
-  context,
-  height,
-  width,
-}: {
-  context: CanvasRenderingContext2D;
-  height: number;
-  width: number;
-}): void {
-  context.strokeStyle = "#3e3e3e";
-
-  for (let i = 0; i <= width; i += CELL_SIZE) {
-    context.moveTo(i, 0);
-    context.lineTo(i, height);
+      },
+    });
   }
 
-  for (let i = 0; i <= height; i += CELL_SIZE) {
-    context.moveTo(0, i);
-    context.lineTo(width, i);
+  private initControls() {
+    this.startButton.innerHTML = "Start";
+    this.stopButton.innerHTML = "Stop";
+    this.randomButton.innerHTML = "Apply random state";
+    this.speedRange.setAttribute("type", "range");
+    this.speedRange.value = String(SPEED_RANGE_DEFAULT_VALUE);
+
+    this.controls.appendChild(this.startButton);
+    this.controls.appendChild(this.stopButton);
+    this.controls.appendChild(this.randomButton);
+    this.controls.appendChild(this.speedRange);
+
+    const fragment = window.document.createDocumentFragment();
+
+    fragment.appendChild(this.controls);
+    fragment.appendChild(this.gameArea);
+
+    this.target.appendChild(fragment);
+
+    fromEvent(this.startButton, "click").subscribe(() => this.game.run());
+
+    fromEvent(this.stopButton, "click").subscribe(() => this.game.stop());
+
+    fromEvent(this.randomButton, "click").subscribe(() => {
+      this.game.setState(
+        Game.getRandomLifeState({
+          columnsCount: this.columnsCount,
+          rowsCount: this.rowsCount,
+        }),
+      );
+    });
+
+    fromEvent(this.speedRange, "change").subscribe(event => {
+      const value = Number.parseInt(
+        (event.target as HTMLInputElement).value,
+        10,
+      );
+      this.game.setInterval(
+        Math.abs(value - SPEED_RANGE_MAX_VALUE) * SPEED_INTERVAL,
+      );
+    });
   }
 
-  context.stroke();
-}
+  private initGrid({ height, width }: { height: number; width: number }): void {
+    this.context.strokeStyle = "#3e3e3e";
 
-function initCanvas({
-  height,
-  target,
-  width,
-}: {
-  height: number;
-  target: HTMLElement;
-  width: number;
-}): CanvasRenderingContext2D {
-  const canvas = document.createElement("canvas") as HTMLCanvasElement;
-  const context = canvas.getContext("2d");
+    for (let i = 0; i <= width; i += CELL_SIZE) {
+      this.context.moveTo(i, 0);
+      this.context.lineTo(i, height);
+    }
 
-  if (!context) {
-    throw new Error("Not able to get canvas context");
+    for (let i = 0; i <= height; i += CELL_SIZE) {
+      this.context.moveTo(0, i);
+      this.context.lineTo(width, i);
+    }
+
+    this.context.stroke();
   }
 
-  scaleCanvas({ context, canvas, width, height });
-  target.appendChild(canvas);
-  return context;
-}
-
-function scaleCanvas({
-  canvas,
-  context,
-  height,
-  width,
-}: {
-  canvas: HTMLCanvasElement;
-  context: CanvasRenderingContext2D;
-  width: number;
-  height: number;
-}) {
-  const devicePixelRatio = window.devicePixelRatio || 1;
-  canvas.width = width * devicePixelRatio;
-  canvas.height = height * devicePixelRatio;
-  canvas.style.width = width + "px";
-  canvas.style.height = height + "px";
-  context.scale(devicePixelRatio, devicePixelRatio);
+  private initCanvas({
+    height,
+    target,
+    width,
+  }: {
+    height: number;
+    target: HTMLElement;
+    width: number;
+  }) {
+    const devicePixelRatio = window.devicePixelRatio || 1;
+    this.canvas.width = width * devicePixelRatio;
+    this.canvas.height = height * devicePixelRatio;
+    this.canvas.style.width = width + "px";
+    this.canvas.style.height = height + "px";
+    this.context.scale(devicePixelRatio, devicePixelRatio);
+    target.appendChild(this.canvas);
+  }
 }

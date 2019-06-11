@@ -1,1 +1,1 @@
-export { ILifeRenderer } from "./ILifeRenderer";
+export { LifeRenderer } from "./LifeRenderer";
