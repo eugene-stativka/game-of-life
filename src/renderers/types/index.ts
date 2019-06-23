@@ -1,1 +1,1 @@
-export { LifeRenderer } from "./LifeRenderer";
+export { LifeRendererProps } from "./LifeRendererProps";

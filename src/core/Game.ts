@@ -27,8 +27,8 @@ export class Game {
     columnsCount: number;
     rowsCount: number;
   }>): Life["state"] {
-    return Array.from({ length: columnsCount }, () =>
-      Array.from({ length: rowsCount }, () =>
+    return Array.from({ length: rowsCount }, () =>
+      Array.from({ length: columnsCount }, () =>
         Math.random() > 0.75 ? CellStates.Alive : CellStates.Dead,
       ),
     );
@@ -73,7 +73,7 @@ export class Game {
   public readonly life$: Observable<Life>;
   private readonly commands$ = new BehaviorSubject<Partial<Life>>({});
 
-  constructor({ initialState }: Readonly<{ initialState: Life }>) {
+  constructor(initialState: Life) {
     const life$: Observable<Life> = this.commands$.pipe(
       startWith(initialState),
       scan<Partial<Life>, Life>((life, command) => ({ ...life, ...command })),
@@ -90,7 +90,7 @@ export class Game {
       distinctUntilChanged(),
     );
 
-    const updates$ = combineLatest(isRunning$, interval$).pipe(
+    const updates$ = combineLatest([isRunning$, interval$]).pipe(
       switchMap(([isRunning, interval]) =>
         isRunning ? timer(0, interval) : NEVER,
       ),

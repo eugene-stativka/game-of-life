@@ -1,5 +1,5 @@
 import { animationFrameScheduler, fromEvent } from "rxjs";
-import { first, map, observeOn, pairwise } from "rxjs/operators";
+import { first, observeOn, pairwise } from "rxjs/operators";
 import {
   CELL_SIZE,
   SPEED_INTERVAL,
@@ -8,8 +8,8 @@ import {
 } from "../../constants";
 import { Game } from "../../core";
 import { assertNever } from "../../helpers";
-import { CellStates } from "../../types";
-import { LifeRenderer } from "../types";
+import { CellStates, Life } from "../../types";
+import { LifeRenderer } from "../LifeRenderer";
 
 export class CanvasLifeRenderer extends LifeRenderer {
   private readonly controls = window.document.createElement("div");
@@ -37,53 +37,37 @@ export class CanvasLifeRenderer extends LifeRenderer {
       observeOn(animationFrameScheduler),
     );
 
-    const init$ = lifeStateShared$.pipe(
-      first(),
-      map(life => ({
-        height: life.state[0].length * CELL_SIZE,
-        width: life.state.length * CELL_SIZE,
-      })),
-    );
-
-    this.disposeBag.subscribe(init$, {
-      next: ({ height, width }) => {
+    this.disposeBag.subscribe(lifeStateShared$.pipe(first()), {
+      next: life => {
         this.initControls();
+
+        const height = life.state.length * CELL_SIZE;
+        const width = life.state[0].length * CELL_SIZE;
+
         this.initCanvas({ height, target: props.target, width });
+
         this.initGrid({ height, width });
+
+        this.renderCells([
+          { isRunning: false, interval: 0, state: [[]] },
+          life,
+        ]);
       },
     });
 
     this.disposeBag.subscribe(lifeStateShared$.pipe(pairwise()), {
       next: ([prevLife, nextLife]) => {
-        this.context.fillStyle = "#09af00";
-        nextLife.state.forEach((line, x) => {
-          line.forEach((item, y) => {
-            if (prevLife.state[x][y] === item) {
-              return;
-            }
-
-            const args: Parameters<CanvasRect["fillRect"]> = [
-              x * CELL_SIZE + 0.5,
-              y * CELL_SIZE + 0.5,
-              CELL_SIZE - 1,
-              CELL_SIZE - 1,
-            ];
-
-            switch (item) {
-              case CellStates.Alive:
-                this.context.fillRect(...args);
-                break;
-              case CellStates.Dead:
-                this.context.clearRect(...args);
-                break;
-              default:
-                assertNever(item);
-                break;
-            }
-          });
-        });
+        this.renderCells([prevLife, nextLife]);
       },
     });
+  }
+
+  public dispose() {
+    super.dispose();
+
+    while (this.target.firstChild) {
+      this.target.removeChild(this.target.firstChild);
+    }
   }
 
   private initControls() {
@@ -161,5 +145,37 @@ export class CanvasLifeRenderer extends LifeRenderer {
     this.canvas.style.height = height + "px";
     this.context.scale(devicePixelRatio, devicePixelRatio);
     target.appendChild(this.canvas);
+  }
+
+  private renderCells([prevLife, nextLife]: [Life, Life]) {
+    this.context.fillStyle = "#09af00";
+    nextLife.state.forEach((row, y) => {
+      row.forEach((item, x) => {
+        const prevLifeCell = prevLife.state[y] && prevLife.state[y][x];
+
+        if (prevLifeCell !== undefined && prevLifeCell === item) {
+          return;
+        }
+
+        const args: Parameters<CanvasRect["fillRect"]> = [
+          x * CELL_SIZE + 0.5,
+          y * CELL_SIZE + 0.5,
+          CELL_SIZE - 1,
+          CELL_SIZE - 1,
+        ];
+
+        switch (item) {
+          case CellStates.Alive:
+            this.context.fillRect(...args);
+            break;
+          case CellStates.Dead:
+            this.context.clearRect(...args);
+            break;
+          default:
+            assertNever(item);
+            break;
+        }
+      });
+    });
   }
 }

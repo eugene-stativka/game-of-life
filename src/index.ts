@@ -1,5 +1,6 @@
 import { css } from "emotion";
 import { MainController } from "./controllers";
+import { RenderModes } from "./types/RenderModes";
 
 main();
 
@@ -12,8 +13,7 @@ function main(): void {
     throw new Error("#root element should be defined");
   }
 
-  // tslint:disable-next-line:no-unused-expression
-  new MainController({ rootEl });
+  MainController.create(rootEl, RenderModes.React);
 }
 
 function applyStyles(): void {

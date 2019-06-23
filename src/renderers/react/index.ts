@@ -1,0 +1,1 @@
+export { ReactLifeRenderer } from "./ReactLifeRenderer";
