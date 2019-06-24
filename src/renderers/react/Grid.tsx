@@ -1,20 +1,17 @@
 import { css } from "emotion";
 import React, { FC, useEffect, useState } from "react";
-import { map, tap } from "rxjs/operators";
+import { tap } from "rxjs/operators";
 import { CELL_SIZE } from "../../constants";
 import { CellStates, Life } from "../../types";
 import { useLifeRendererProps } from "./LifeRendererPropsContext";
 
 export const Grid: FC<{}> = () => {
-  const [life, setLife] = useState<Life["state"]>([[]]);
+  const [life, setLife] = useState<Life>([[]]);
   const { game } = useLifeRendererProps();
 
   useEffect(() => {
     const subscription = game.life$
-      .pipe(
-        map(({ state }) => state),
-        tap(newLife => setLife(newLife)),
-      )
+      .pipe(tap(newLife => setLife(newLife)))
       .subscribe();
 
     return () => subscription.unsubscribe();

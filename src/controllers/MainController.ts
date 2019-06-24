@@ -1,13 +1,10 @@
 import { css } from "emotion";
 import { fromEvent } from "rxjs";
 import { distinctUntilChanged, map, tap } from "rxjs/operators";
-import {
-  CELL_SIZE,
-  SPEED_INTERVAL,
-  SPEED_RANGE_DEFAULT_VALUE,
-} from "../constants";
+import { CELL_SIZE } from "../constants";
 import { Game } from "../core";
 import { LifeRenderer, LifeRendererProps } from "../renderers";
+import { CellStates } from "../types";
 import { RenderModes } from "../types/RenderModes";
 
 export class MainController {
@@ -41,11 +38,11 @@ export class MainController {
     const rowsCount =
       (height - (height % CELL_SIZE) - CELL_SIZE * 10) / CELL_SIZE;
 
-    this.game = new Game({
-      interval: SPEED_RANGE_DEFAULT_VALUE * SPEED_INTERVAL,
-      isRunning: false,
-      state: Game.getRandomLifeState({ columnsCount, rowsCount }),
-    });
+    this.game = new Game();
+
+    this.game.setLife(
+      Array(rowsCount).fill(Array(columnsCount).fill(CellStates.Dead)),
+    );
 
     const rendererProps: LifeRendererProps = {
       columnsCount,

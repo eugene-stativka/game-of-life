@@ -4,4 +4,4 @@ dist/
 .idea/
 .theia/
 /game-of-life.iml
-
+/yarn-error.log

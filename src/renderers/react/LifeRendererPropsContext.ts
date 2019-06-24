@@ -4,11 +4,7 @@ import { LifeRendererProps } from "../types";
 
 const context = createContext<LifeRendererProps>({
   columnsCount: 0,
-  game: new Game({
-    interval: 0,
-    isRunning: false,
-    state: [[]],
-  }),
+  game: new Game(),
   rowsCount: 0,
   target: window.document.createElement("div"),
 });

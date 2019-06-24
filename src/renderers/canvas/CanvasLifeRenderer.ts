@@ -1,17 +1,13 @@
 import { animationFrameScheduler, fromEvent } from "rxjs";
 import { first, observeOn, pairwise } from "rxjs/operators";
-import {
-  CELL_SIZE,
-  SPEED_INTERVAL,
-  SPEED_RANGE_DEFAULT_VALUE,
-  SPEED_RANGE_MAX_VALUE,
-} from "../../constants";
+import { CELL_SIZE, SPEED_LEVEL_DEFAULT_PERCENT } from "../../constants";
 import { Game } from "../../core";
-import { assertNever } from "../../helpers";
+import { assertNever, DisposeBag } from "../../helpers";
 import { CellStates, Life } from "../../types";
 import { LifeRenderer } from "../LifeRenderer";
 
 export class CanvasLifeRenderer extends LifeRenderer {
+  private readonly disposeBag = new DisposeBag();
   private readonly controls = window.document.createElement("div");
   private readonly gameArea = window.document.createElement("div");
   private readonly randomButton = window.document.createElement("button");
@@ -41,17 +37,14 @@ export class CanvasLifeRenderer extends LifeRenderer {
       next: life => {
         this.initControls();
 
-        const height = life.state.length * CELL_SIZE;
-        const width = life.state[0].length * CELL_SIZE;
+        const height = life.length * CELL_SIZE;
+        const width = life[0].length * CELL_SIZE;
 
         this.initCanvas({ height, target: props.target, width });
 
         this.initGrid({ height, width });
 
-        this.renderCells([
-          { isRunning: false, interval: 0, state: [[]] },
-          life,
-        ]);
+        this.renderCells([[[]], life]);
       },
     });
 
@@ -63,7 +56,7 @@ export class CanvasLifeRenderer extends LifeRenderer {
   }
 
   public dispose() {
-    super.dispose();
+    this.disposeBag.dispose();
 
     while (this.target.firstChild) {
       this.target.removeChild(this.target.firstChild);
@@ -75,7 +68,7 @@ export class CanvasLifeRenderer extends LifeRenderer {
     this.stopButton.innerHTML = "Stop";
     this.randomButton.innerHTML = "Apply random state";
     this.speedRange.setAttribute("type", "range");
-    this.speedRange.value = String(SPEED_RANGE_DEFAULT_VALUE);
+    this.speedRange.value = String(SPEED_LEVEL_DEFAULT_PERCENT);
 
     this.controls.appendChild(this.startButton);
     this.controls.appendChild(this.stopButton);
@@ -89,13 +82,13 @@ export class CanvasLifeRenderer extends LifeRenderer {
 
     this.target.appendChild(fragment);
 
-    fromEvent(this.startButton, "click").subscribe(() => this.game.run());
+    fromEvent(this.startButton, "click").subscribe(() => this.game.play());
 
-    fromEvent(this.stopButton, "click").subscribe(() => this.game.stop());
+    fromEvent(this.stopButton, "click").subscribe(() => this.game.pause());
 
     fromEvent(this.randomButton, "click").subscribe(() => {
-      this.game.setState(
-        Game.getRandomLifeState({
+      this.game.setLife(
+        Game.getRandomLife({
           columnsCount: this.columnsCount,
           rowsCount: this.rowsCount,
         }),
@@ -103,13 +96,15 @@ export class CanvasLifeRenderer extends LifeRenderer {
     });
 
     fromEvent(this.speedRange, "change").subscribe(event => {
-      const value = Number.parseInt(
-        (event.target as HTMLInputElement).value,
-        10,
+      this.game.setSpeed(
+        Number.parseInt((event.target as HTMLInputElement).value, 10),
       );
-      this.game.setInterval(
-        Math.abs(value - SPEED_RANGE_MAX_VALUE) * SPEED_INTERVAL,
-      );
+    });
+
+    this.disposeBag.subscribe(this.game.speedLevel$, {
+      next: speedLevel => {
+        this.speedRange.value = String(speedLevel);
+      },
     });
   }
 
@@ -149,9 +144,9 @@ export class CanvasLifeRenderer extends LifeRenderer {
 
   private renderCells([prevLife, nextLife]: [Life, Life]) {
     this.context.fillStyle = "#09af00";
-    nextLife.state.forEach((row, y) => {
+    nextLife.forEach((row, y) => {
       row.forEach((item, x) => {
-        const prevLifeCell = prevLife.state[y] && prevLife.state[y][x];
+        const prevLifeCell = prevLife[y] && prevLife[y][x];
 
         if (prevLifeCell !== undefined && prevLifeCell === item) {
           return;

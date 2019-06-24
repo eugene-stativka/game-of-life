@@ -1,10 +1,8 @@
 import { Game } from "../core";
-import { DisposeBag } from "../helpers/DisposeBag";
 import { IDisposable } from "../types/Disposable";
 import { LifeRendererProps } from "./types";
 
 export abstract class LifeRenderer implements IDisposable {
-  protected readonly disposeBag = new DisposeBag();
   protected readonly game: Game;
   protected readonly target: HTMLElement;
   protected readonly columnsCount: number;
@@ -17,7 +15,5 @@ export abstract class LifeRenderer implements IDisposable {
     this.rowsCount = props.rowsCount;
   }
 
-  public dispose() {
-    this.disposeBag.dispose();
-  }
+  public abstract dispose(): void;
 }

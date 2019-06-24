@@ -10,23 +10,42 @@ import {
   distinctUntilChanged,
   ignoreElements,
   map,
-  scan,
   shareReplay,
-  startWith,
   switchMap,
   tap,
   withLatestFrom,
 } from "rxjs/operators";
-import { CellStates, ICoordinates, Life } from "../types";
+import {
+  SPEED_LEVEL_DEFAULT_PERCENT,
+  SPEED_LEVEL_MAX_PERCENT,
+  SPEED_LEVEL_MIN_PERCENT,
+} from "../constants";
+import { CellStates, ICoordinates, Life, SpeedInterval } from "../types";
+
+const SPEED_INTERVAL_MULTIPLIER = 10;
 
 export class Game {
-  public static getRandomLifeState({
+  public get isRunning$() {
+    return this.isRunningSubject$.pipe(distinctUntilChanged());
+  }
+
+  public get speedLevel$() {
+    return this.intervalSubject$.pipe(
+      distinctUntilChanged(),
+      map(
+        interval =>
+          SPEED_LEVEL_MAX_PERCENT - interval / SPEED_INTERVAL_MULTIPLIER,
+      ),
+    );
+  }
+
+  public static getRandomLife({
     columnsCount,
     rowsCount,
   }: Readonly<{
     columnsCount: number;
     rowsCount: number;
-  }>): Life["state"] {
+  }>): Life {
     return Array.from({ length: rowsCount }, () =>
       Array.from({ length: columnsCount }, () =>
         Math.random() > 0.75 ? CellStates.Alive : CellStates.Dead,
@@ -34,24 +53,21 @@ export class Game {
     );
   }
 
-  private static getNextCellState({
-    coordinates: { x, y },
-    state,
-  }: {
-    coordinates: ICoordinates;
-    state: Life["state"];
-  }): CellStates {
-    const prevCellState = state[x][y];
+  private static getNextCellState(
+    { x, y }: ICoordinates,
+    life: Life,
+  ): CellStates {
+    const prevCellState = life[x][y];
 
     const aliveCellsAroundCount = [
-      (state[x - 1] || [])[y - 1],
-      (state[x] || [])[y - 1],
-      (state[x + 1] || [])[y - 1],
-      (state[x - 1] || [])[y],
-      (state[x + 1] || [])[y],
-      (state[x - 1] || [])[y + 1],
-      (state[x] || [])[y + 1],
-      (state[x + 1] || [])[y + 1],
+      (life[x - 1] || [])[y - 1],
+      (life[x] || [])[y - 1],
+      (life[x + 1] || [])[y - 1],
+      (life[x - 1] || [])[y],
+      (life[x + 1] || [])[y],
+      (life[x - 1] || [])[y + 1],
+      (life[x] || [])[y + 1],
+      (life[x + 1] || [])[y + 1],
     ].reduce((acc, cell) => acc + (cell || 0), 0);
 
     switch (true) {
@@ -70,61 +86,62 @@ export class Game {
     }
   }
 
+  private static normalizeInterval(percent: number): SpeedInterval {
+    return Math.abs(
+      ((percent > SPEED_LEVEL_MIN_PERCENT
+        ? Math.min(percent, SPEED_LEVEL_MAX_PERCENT)
+        : SPEED_LEVEL_MIN_PERCENT) -
+        SPEED_LEVEL_MAX_PERCENT) *
+        SPEED_INTERVAL_MULTIPLIER,
+    ) as SpeedInterval;
+  }
+
   public readonly life$: Observable<Life>;
-  private readonly commands$ = new BehaviorSubject<Partial<Life>>({});
 
-  constructor(initialState: Life) {
-    const life$: Observable<Life> = this.commands$.pipe(
-      startWith(initialState),
-      scan<Partial<Life>, Life>((life, command) => ({ ...life, ...command })),
-      shareReplay(1),
-    );
+  private readonly isRunningSubject$ = new BehaviorSubject(false);
 
-    const isRunning$ = life$.pipe(
-      map(state => state.isRunning),
-      distinctUntilChanged(),
-    );
+  private readonly intervalSubject$ = new BehaviorSubject(
+    Game.normalizeInterval(SPEED_LEVEL_DEFAULT_PERCENT),
+  );
 
-    const interval$ = life$.pipe(
-      map(state => state.interval),
-      distinctUntilChanged(),
-    );
+  private readonly lifeSubject$ = new BehaviorSubject<Life>([[]]);
 
-    const updates$ = combineLatest([isRunning$, interval$]).pipe(
+  constructor() {
+    const updates$ = combineLatest([
+      this.isRunning$,
+      this.intervalSubject$,
+    ]).pipe(
       switchMap(([isRunning, interval]) =>
         isRunning ? timer(0, interval) : NEVER,
       ),
-      withLatestFrom(life$, (_, state) => state),
+      withLatestFrom(this.lifeSubject$, (_, state) => state),
       tap(prevLife => {
-        this.commands$.next({
-          state: prevLife.state.map((line, x) =>
-            line.map(({}, y) =>
-              Game.getNextCellState({
-                coordinates: { x, y },
-                state: prevLife.state,
-              }),
-            ),
+        this.lifeSubject$.next(
+          prevLife.map((line, x) =>
+            line.map(({}, y) => Game.getNextCellState({ x, y }, prevLife)),
           ),
-        });
+        );
       }),
     );
 
-    this.life$ = merge(updates$.pipe(ignoreElements()), life$);
+    this.life$ = merge(updates$.pipe(ignoreElements()), this.lifeSubject$).pipe(
+      shareReplay(1),
+    );
   }
 
-  public setInterval(interval: Life["interval"]) {
-    this.commands$.next({ interval });
+  public setSpeed(percent: number) {
+    this.intervalSubject$.next(Game.normalizeInterval(percent));
   }
 
-  public setState(state: Life["state"]) {
-    this.commands$.next({ state });
+  public setLife(life: Life) {
+    this.lifeSubject$.next(life);
   }
 
-  public run() {
-    this.commands$.next({ isRunning: true });
+  public play() {
+    this.isRunningSubject$.next(true);
   }
 
-  public stop() {
-    this.commands$.next({ isRunning: false });
+  public pause() {
+    this.isRunningSubject$.next(false);
   }
 }

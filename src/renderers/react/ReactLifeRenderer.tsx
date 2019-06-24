@@ -20,8 +20,6 @@ export class ReactLifeRenderer extends LifeRenderer {
   }
 
   public dispose() {
-    super.dispose();
-
     ReactDOM.unmountComponentAtNode(this.target);
   }
 }
