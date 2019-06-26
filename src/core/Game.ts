@@ -20,7 +20,7 @@ import {
   SPEED_LEVEL_MAX_PERCENT,
   SPEED_LEVEL_MIN_PERCENT,
 } from "../constants";
-import { CellStates, ICoordinates, Life, SpeedInterval } from "../types";
+import { CellStates, Coordinates, Life, SpeedInterval } from "../types";
 
 const SPEED_INTERVAL_MULTIPLIER = 10;
 
@@ -54,7 +54,7 @@ export class Game {
   }
 
   private static getNextCellState(
-    { x, y }: ICoordinates,
+    { x, y }: Coordinates,
     life: Life,
   ): CellStates {
     const prevCellState = life[x][y];
@@ -143,5 +143,19 @@ export class Game {
 
   public pause() {
     this.isRunningSubject$.next(false);
+  }
+
+  public toggleCell({ x, y }: Coordinates) {
+    const life = this.lifeSubject$.getValue();
+
+    this.lifeSubject$.next([
+      ...life.slice(0, y),
+      life[y] && [
+        ...life[y].slice(0, x),
+        life[y][x] === CellStates.Dead ? CellStates.Alive : CellStates.Dead,
+        ...life[y].slice(x + 1),
+      ],
+      ...life.slice(y + 1),
+    ]);
   }
 }

@@ -1,5 +1,4 @@
-export interface ICoordinates
-  extends Readonly<{
-    x: number;
-    y: number;
-  }> {}
+export type Coordinates = Readonly<{
+  x: number;
+  y: number;
+}>;

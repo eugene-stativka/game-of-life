@@ -1,5 +1,5 @@
 import { animationFrameScheduler, fromEvent } from "rxjs";
-import { first, observeOn, pairwise } from "rxjs/operators";
+import { first, map, observeOn, pairwise } from "rxjs/operators";
 import { CELL_SIZE, SPEED_LEVEL_DEFAULT_PERCENT } from "../../constants";
 import { Game } from "../../core";
 import { assertNever, DisposeBag } from "../../helpers";
@@ -14,7 +14,7 @@ export class CanvasLifeRenderer extends LifeRenderer {
   private readonly startButton = window.document.createElement("button");
   private readonly stopButton = window.document.createElement("button");
   private readonly speedRange = window.document.createElement("input");
-  private readonly canvas = document.createElement("canvas");
+  private readonly canvas = window.document.createElement("canvas");
   private readonly context = this.canvas.getContext(
     "2d",
   ) as CanvasRenderingContext2D;
@@ -53,6 +53,20 @@ export class CanvasLifeRenderer extends LifeRenderer {
         this.renderCells([prevLife, nextLife]);
       },
     });
+
+    this.disposeBag.subscribe(
+      fromEvent<MouseEvent>(this.canvas, "click").pipe(
+        map(event => ({
+          x: Math.floor(event.offsetX / CELL_SIZE),
+          y: Math.floor(event.offsetY / CELL_SIZE),
+        })),
+      ),
+      {
+        next: coordinates => {
+          this.game.toggleCell(coordinates);
+        },
+      },
+    );
   }
 
   public dispose() {
