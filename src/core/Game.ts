@@ -129,6 +129,12 @@ export class Game {
     );
   }
 
+  public resetLife() {
+    const life = this.lifeSubject$.getValue();
+
+    this.lifeSubject$.next(life.map(row => row.map(() => CellStates.Dead)));
+  }
+
   public setSpeed(percent: number) {
     this.intervalSubject$.next(Game.normalizeInterval(percent));
   }

@@ -11,6 +11,7 @@ export class CanvasLifeRenderer extends LifeRenderer {
   private readonly controls = window.document.createElement("div");
   private readonly gameArea = window.document.createElement("div");
   private readonly randomButton = window.document.createElement("button");
+  private readonly resetButton = window.document.createElement("button");
   private readonly startButton = window.document.createElement("button");
   private readonly stopButton = window.document.createElement("button");
   private readonly speedRange = window.document.createElement("input");
@@ -81,12 +82,14 @@ export class CanvasLifeRenderer extends LifeRenderer {
     this.startButton.innerHTML = "Start";
     this.stopButton.innerHTML = "Stop";
     this.randomButton.innerHTML = "Apply random state";
+    this.resetButton.innerHTML = "Reset";
     this.speedRange.setAttribute("type", "range");
     this.speedRange.value = String(SPEED_LEVEL_DEFAULT_PERCENT);
 
     this.controls.appendChild(this.startButton);
     this.controls.appendChild(this.stopButton);
     this.controls.appendChild(this.randomButton);
+    this.controls.appendChild(this.resetButton);
     this.controls.appendChild(this.speedRange);
 
     const fragment = window.document.createDocumentFragment();
@@ -108,6 +111,8 @@ export class CanvasLifeRenderer extends LifeRenderer {
         }),
       );
     });
+
+    fromEvent(this.resetButton, "click").subscribe(() => this.game.resetLife());
 
     fromEvent(this.speedRange, "change").subscribe(event => {
       this.game.setSpeed(

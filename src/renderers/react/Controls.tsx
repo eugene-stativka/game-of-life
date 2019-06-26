@@ -44,6 +44,8 @@ export const Controls: FC<{}> = () => {
         Apply random state
       </button>
 
+      <button onClick={() => game.resetLife()}>Reset</button>
+
       <input
         type="range"
         onChange={event => {
