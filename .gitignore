@@ -2,6 +2,3 @@ node_modules/
 .cache/
 dist/
 .idea/
-.theia/
-/game-of-life.iml
-/yarn-error.log

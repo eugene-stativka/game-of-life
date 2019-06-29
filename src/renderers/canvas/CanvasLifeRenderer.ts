@@ -1,5 +1,6 @@
+import { css } from "emotion";
 import { animationFrameScheduler, fromEvent } from "rxjs";
-import { first, map, observeOn, pairwise } from "rxjs/operators";
+import { first, map, observeOn, pairwise, tap } from "rxjs/operators";
 import { CELL_SIZE, SPEED_LEVEL_DEFAULT_PERCENT } from "../../constants";
 import { Game } from "../../core";
 import { assertNever, DisposeBag } from "../../helpers";
@@ -12,8 +13,8 @@ export class CanvasLifeRenderer extends LifeRenderer {
   private readonly gameArea = window.document.createElement("div");
   private readonly randomButton = window.document.createElement("button");
   private readonly resetButton = window.document.createElement("button");
-  private readonly startButton = window.document.createElement("button");
-  private readonly stopButton = window.document.createElement("button");
+  private readonly playButton = window.document.createElement("button");
+  private readonly pauseButton = window.document.createElement("button");
   private readonly speedRange = window.document.createElement("input");
   private readonly canvas = window.document.createElement("canvas");
   private readonly context = this.canvas.getContext(
@@ -34,39 +35,31 @@ export class CanvasLifeRenderer extends LifeRenderer {
       observeOn(animationFrameScheduler),
     );
 
-    this.disposeBag.subscribe(lifeStateShared$.pipe(first()), {
-      next: life => {
-        this.initControls();
+    this.disposeBag.subscribe(
+      lifeStateShared$.pipe(
+        first(),
+        tap(life => {
+          this.initControls();
 
-        const height = life.length * CELL_SIZE;
-        const width = life[0].length * CELL_SIZE;
+          const height = life.length * CELL_SIZE;
+          const width = life[0].length * CELL_SIZE;
 
-        this.initCanvas({ height, target: props.target, width });
+          this.initCanvas({ height, target: props.target, width });
 
-        this.initGrid({ height, width });
+          this.initGrid({ height, width });
 
-        this.renderCells([[[]], life]);
-      },
-    });
-
-    this.disposeBag.subscribe(lifeStateShared$.pipe(pairwise()), {
-      next: ([prevLife, nextLife]) => {
-        this.renderCells([prevLife, nextLife]);
-      },
-    });
+          this.renderCells([[[]], life]);
+        }),
+      ),
+    );
 
     this.disposeBag.subscribe(
-      fromEvent<MouseEvent>(this.canvas, "click").pipe(
-        map(event => ({
-          x: Math.floor(event.offsetX / CELL_SIZE),
-          y: Math.floor(event.offsetY / CELL_SIZE),
-        })),
+      lifeStateShared$.pipe(
+        pairwise(),
+        tap(([prevLife, nextLife]) => {
+          this.renderCells([prevLife, nextLife]);
+        }),
       ),
-      {
-        next: coordinates => {
-          this.game.toggleCell(coordinates);
-        },
-      },
     );
   }
 
@@ -79,18 +72,24 @@ export class CanvasLifeRenderer extends LifeRenderer {
   }
 
   private initControls() {
-    this.startButton.innerHTML = "Start";
-    this.stopButton.innerHTML = "Stop";
+    this.playButton.innerHTML = "Play ▶️";
+    this.playButton.style.display = "none";
+    this.pauseButton.innerHTML = "Pause ⏸";
+    this.pauseButton.style.display = "none";
     this.randomButton.innerHTML = "Apply random state";
     this.resetButton.innerHTML = "Reset";
     this.speedRange.setAttribute("type", "range");
     this.speedRange.value = String(SPEED_LEVEL_DEFAULT_PERCENT);
 
-    this.controls.appendChild(this.startButton);
-    this.controls.appendChild(this.stopButton);
+    this.controls.appendChild(this.playButton);
+    this.controls.appendChild(this.pauseButton);
     this.controls.appendChild(this.randomButton);
     this.controls.appendChild(this.resetButton);
     this.controls.appendChild(this.speedRange);
+
+    this.controls.classList.add(css`
+      margin-bottom: 15px;
+    `);
 
     const fragment = window.document.createDocumentFragment();
 
@@ -99,32 +98,77 @@ export class CanvasLifeRenderer extends LifeRenderer {
 
     this.target.appendChild(fragment);
 
-    fromEvent(this.startButton, "click").subscribe(() => this.game.play());
+    this.disposeBag.subscribe(
+      fromEvent(this.playButton, "click").pipe(tap(() => this.game.play())),
+    );
 
-    fromEvent(this.stopButton, "click").subscribe(() => this.game.pause());
+    this.disposeBag.subscribe(
+      fromEvent(this.pauseButton, "click").pipe(tap(() => this.game.pause())),
+    );
 
-    fromEvent(this.randomButton, "click").subscribe(() => {
-      this.game.setLife(
-        Game.getRandomLife({
-          columnsCount: this.columnsCount,
-          rowsCount: this.rowsCount,
+    this.disposeBag.subscribe(
+      fromEvent(this.randomButton, "click").pipe(
+        tap(() =>
+          this.game.setLife(
+            Game.getRandomLife({
+              columnsCount: this.columnsCount,
+              rowsCount: this.rowsCount,
+            }),
+          ),
+        ),
+      ),
+    );
+
+    this.disposeBag.subscribe(
+      fromEvent(this.resetButton, "click").pipe(
+        tap(() => this.game.resetLife()),
+      ),
+    );
+
+    this.disposeBag.subscribe(
+      fromEvent(this.speedRange, "change").pipe(
+        tap(event => {
+          this.game.setSpeed(
+            Number.parseInt((event.target as HTMLInputElement).value, 10),
+          );
         }),
-      );
-    });
+      ),
+    );
 
-    fromEvent(this.resetButton, "click").subscribe(() => this.game.resetLife());
+    this.disposeBag.subscribe(
+      this.game.speedLevel$.pipe(
+        tap(speedLevel => {
+          this.speedRange.value = String(speedLevel);
+        }),
+      ),
+    );
 
-    fromEvent(this.speedRange, "change").subscribe(event => {
-      this.game.setSpeed(
-        Number.parseInt((event.target as HTMLInputElement).value, 10),
-      );
-    });
+    this.disposeBag.subscribe(
+      fromEvent<MouseEvent>(this.canvas, "click").pipe(
+        map(event => ({
+          x: Math.floor(event.offsetX / CELL_SIZE),
+          y: Math.floor(event.offsetY / CELL_SIZE),
+        })),
+        tap(coordinates => {
+          this.game.pause();
+          this.game.toggleCell(coordinates);
+        }),
+      ),
+    );
 
-    this.disposeBag.subscribe(this.game.speedLevel$, {
-      next: speedLevel => {
-        this.speedRange.value = String(speedLevel);
-      },
-    });
+    this.disposeBag.subscribe(
+      this.game.isRunning$.pipe(
+        tap(isRunning => {
+          if (isRunning) {
+            this.playButton.style.display = "none";
+            this.pauseButton.style.display = "inline";
+          } else {
+            this.playButton.style.display = "inline";
+            this.pauseButton.style.display = "none";
+          }
+        }),
+      ),
+    );
   }
 
   private initGrid({ height, width }: { height: number; width: number }): void {

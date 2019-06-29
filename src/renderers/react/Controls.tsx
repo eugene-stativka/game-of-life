@@ -28,6 +28,7 @@ export const Controls: FC<{}> = () => {
     <div
       className={css`
         display: flex;
+        margin-bottom: 15px;
       `}
     >
       {isRunning ? (

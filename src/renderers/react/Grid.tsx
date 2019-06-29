@@ -43,7 +43,10 @@ export const Grid: FC<{}> = () => {
                       `
                 }`}
                 key={cellIndex}
-                onClick={() => game.toggleCell({ x: cellIndex, y: rowIndex })}
+                onClick={() => {
+                  game.pause();
+                  game.toggleCell({ x: cellIndex, y: rowIndex });
+                }}
               />
             ))}
           </tr>

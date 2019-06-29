@@ -13,7 +13,7 @@ function main(): void {
     throw new Error("#root element should be defined");
   }
 
-  MainController.create(rootEl, RenderModes.React);
+  MainController.create(rootEl, RenderModes.Canvas);
 }
 
 function applyStyles(): void {

@@ -1,4 +1,4 @@
-import { Observable, PartialObserver, Subject } from "rxjs";
+import { Observable, Subject } from "rxjs";
 import { takeUntil } from "rxjs/operators";
 import { IDisposable } from "../types/Disposable";
 
@@ -9,7 +9,7 @@ export class DisposeBag implements IDisposable {
     this.dispose$.next();
   }
 
-  public subscribe<T>(observable: Observable<T>, observer: PartialObserver<T>) {
-    return observable.pipe(takeUntil(this.dispose$)).subscribe(observer);
+  public subscribe<T>(observable: Observable<T>) {
+    return observable.pipe(takeUntil(this.dispose$)).subscribe();
   }
 }

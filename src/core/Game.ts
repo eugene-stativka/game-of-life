@@ -25,20 +25,6 @@ import { CellStates, Coordinates, Life, SpeedInterval } from "../types";
 const SPEED_INTERVAL_MULTIPLIER = 10;
 
 export class Game {
-  public get isRunning$() {
-    return this.isRunningSubject$.pipe(distinctUntilChanged());
-  }
-
-  public get speedLevel$() {
-    return this.intervalSubject$.pipe(
-      distinctUntilChanged(),
-      map(
-        interval =>
-          SPEED_LEVEL_MAX_PERCENT - interval / SPEED_INTERVAL_MULTIPLIER,
-      ),
-    );
-  }
-
   public static getRandomLife({
     columnsCount,
     rowsCount,
@@ -96,7 +82,11 @@ export class Game {
     ) as SpeedInterval;
   }
 
+  public readonly isRunning$: Observable<boolean>;
+
   public readonly life$: Observable<Life>;
+
+  public readonly speedLevel$: Observable<number>;
 
   private readonly isRunningSubject$ = new BehaviorSubject(false);
 
@@ -107,10 +97,22 @@ export class Game {
   private readonly lifeSubject$ = new BehaviorSubject<Life>([[]]);
 
   constructor() {
-    const updates$ = combineLatest([
-      this.isRunning$,
-      this.intervalSubject$,
-    ]).pipe(
+    const interval$ = this.intervalSubject$.pipe(distinctUntilChanged());
+
+    this.speedLevel$ = interval$.pipe(
+      map(
+        interval =>
+          SPEED_LEVEL_MAX_PERCENT - interval / SPEED_INTERVAL_MULTIPLIER,
+      ),
+      shareReplay(1),
+    );
+
+    this.isRunning$ = this.isRunningSubject$.pipe(
+      distinctUntilChanged(),
+      shareReplay(1),
+    );
+
+    const updates$ = combineLatest([this.isRunning$, interval$]).pipe(
       switchMap(([isRunning, interval]) =>
         isRunning ? timer(0, interval) : NEVER,
       ),
@@ -132,7 +134,11 @@ export class Game {
   public resetLife() {
     const life = this.lifeSubject$.getValue();
 
-    this.lifeSubject$.next(life.map(row => row.map(() => CellStates.Dead)));
+    this.lifeSubject$.next(
+      new Array(life.length).fill(
+        new Array(life[0].length).fill(CellStates.Dead),
+      ),
+    );
   }
 
   public setSpeed(percent: number) {
