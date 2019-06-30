@@ -5,10 +5,12 @@ import {
   ReactLifeRenderer,
 } from "../renderers";
 import { LifeRendererProps } from "../renderers/types";
+import { VueLifeRenderer } from "../renderers/vue/VueLifeRenderer";
 
 export enum RenderModes {
   Canvas,
   React,
+  Vue,
 }
 
 export namespace RenderModes {
@@ -24,6 +26,8 @@ export namespace RenderModes {
         return "Canvas";
       case RenderModes.React:
         return "React";
+      case RenderModes.Vue:
+        return "Vue";
       default:
         return assertNever(mode);
     }
@@ -38,6 +42,8 @@ export namespace RenderModes {
         return new CanvasLifeRenderer(props);
       case RenderModes.React:
         return new ReactLifeRenderer(props);
+      case RenderModes.Vue:
+        return new VueLifeRenderer(props);
       default:
         return assertNever(mode);
     }
