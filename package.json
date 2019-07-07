@@ -40,11 +40,15 @@
   },
   "dependencies": {
     "emotion": "^10.0.14",
+    "lit-element": "^2.2.0",
     "react": "^16.9.0-alpha.0",
     "react-dom": "^16.9.0-alpha.0",
     "rxjs": "^6.5.2",
     "vue": "^2.6.10",
     "vue-class-component": "^7.1.0",
     "vue-hot-reload-api": "^2.3.3"
-  }
+  },
+  "browserslist": [
+    "last 1 chrome versions"
+  ]
 }

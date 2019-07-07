@@ -1,0 +1,1 @@
+export { VueLifeRenderer } from "./VueLifeRenderer";

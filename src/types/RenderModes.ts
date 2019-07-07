@@ -2,13 +2,15 @@ import { assertNever } from "../helpers";
 import {
   CanvasLifeRenderer,
   LifeRenderer,
+  LitElementLifeRenderer,
   ReactLifeRenderer,
+  VueLifeRenderer,
 } from "../renderers";
 import { LifeRendererProps } from "../renderers/types";
-import { VueLifeRenderer } from "../renderers/vue/VueLifeRenderer";
 
 export enum RenderModes {
   Canvas,
+  LitElement,
   React,
   Vue,
 }
@@ -24,6 +26,8 @@ export namespace RenderModes {
     switch (mode) {
       case RenderModes.Canvas:
         return "Canvas";
+      case RenderModes.LitElement:
+        return "lit-element";
       case RenderModes.React:
         return "React";
       case RenderModes.Vue:
@@ -40,6 +44,8 @@ export namespace RenderModes {
     switch (mode) {
       case RenderModes.Canvas:
         return new CanvasLifeRenderer(props);
+      case RenderModes.LitElement:
+        return new LitElementLifeRenderer(props);
       case RenderModes.React:
         return new ReactLifeRenderer(props);
       case RenderModes.Vue:
